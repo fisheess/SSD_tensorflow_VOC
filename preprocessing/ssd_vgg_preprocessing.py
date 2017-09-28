@@ -23,15 +23,16 @@ import tf_extended as tfe
 from tensorflow.python.ops import control_flow_ops
 
 from preprocessing import tf_image
+
 # from nets import ssd_common
 
 slim = tf.contrib.slim
 
 # Resizing strategies.
-Resize = IntEnum('Resize', ('NONE',                # Nothing!
-                            'CENTRAL_CROP',        # Crop (and pad if necessary).
-                            'PAD_AND_RESIZE',      # Pad, and resize to output shape.
-                            'WARP_RESIZE'))        # Warp resize.
+Resize = IntEnum('Resize', ('NONE',  # Nothing!
+                            'CENTRAL_CROP',  # Crop (and pad if necessary).
+                            'PAD_AND_RESIZE',  # Pad, and resize to output shape.
+                            'WARP_RESIZE'))  # Warp resize.
 
 # VGG mean parameters.
 _R_MEAN = 123.
@@ -39,7 +40,7 @@ _G_MEAN = 117.
 _B_MEAN = 104.
 
 # Some training pre-processing parameters.
-BBOX_CROP_OVERLAP = 0.4        # Minimum overlap to keep a bbox after cropping.
+BBOX_CROP_OVERLAP = 0.4  # Minimum overlap to keep a bbox after cropping.
 CROP_RATIO_RANGE = (0.8, 1.2)  # Distortion ratio during cropping.
 EVAL_SIZE = (300, 300)
 
@@ -115,8 +116,8 @@ def apply_with_random_selector(x, func, num_cases):
     sel = tf.random_uniform([], maxval=num_cases, dtype=tf.int32)
     # Pass the real x only to one of the func calls.
     return control_flow_ops.merge([
-            func(control_flow_ops.switch(x, tf.equal(sel, case))[1], case)
-            for case in range(num_cases)])[0]
+        func(control_flow_ops.switch(x, tf.equal(sel, case))[1], case)
+        for case in range(num_cases)])[0]
 
 
 def distort_color(image, color_ordering=0, fast_mode=True, scope=None):
@@ -179,7 +180,7 @@ def distorted_bounding_box_crop(image,
                                 aspect_ratio_range=(0.5, 2.0),
                                 area_range=(0.1, 1.0),
                                 max_attempts=200,
-                                bbox_crop_overlap = 0.5,
+                                bbox_crop_overlap=0.5,
                                 scope=None):
     """Generates cropped_image using a one of the bboxes randomly distorted.
 
@@ -209,13 +210,13 @@ def distorted_bounding_box_crop(image,
         # Each bounding box has shape [1, num_boxes, box coords] and
         # the coordinates are ordered [ymin, xmin, ymax, xmax].
         bbox_begin, bbox_size, distort_bbox = tf.image.sample_distorted_bounding_box(
-                tf.shape(image),
-                bounding_boxes=tf.expand_dims(bboxes, 0),
-                min_object_covered=min_object_covered,
-                aspect_ratio_range=aspect_ratio_range,
-                area_range=area_range,
-                max_attempts=max_attempts,
-                use_image_if_no_bounding_boxes=True)
+            tf.shape(image),
+            bounding_boxes=tf.expand_dims(bboxes, 0),
+            min_object_covered=min_object_covered,
+            aspect_ratio_range=aspect_ratio_range,
+            area_range=area_range,
+            max_attempts=max_attempts,
+            use_image_if_no_bounding_boxes=True)
         distort_bbox = distort_bbox[0, 0]
 
         # Crop the image to the specified bounding box.
@@ -227,16 +228,16 @@ def distorted_bounding_box_crop(image,
         bboxes = tfe.bboxes_resize(distort_bbox, bboxes)
         labels, bboxes = tfe.bboxes_filter_overlap(labels, bboxes,
                                                    bbox_crop_overlap)
-        
-        #adjust bbbox coordinates so that they go back to [0,1]
-        #this is essentially keeping only the overlapped of the bbox
-        
-        ymin = tf.maximum(bboxes[:,0], 0.0)
-        
-        xmin = tf.maximum(bboxes[:,1], 0.0)
-        ymax = tf.minimum(bboxes[:,2], 1.0)
-        xmax = tf.minimum(bboxes[:,3], 1.0)
-        bboxes = tf.stack([ymin,xmin,ymax,xmax], axis = -1)
+
+        # adjust bbbox coordinates so that they go back to [0,1]
+        # this is essentially keeping only the overlapped of the bbox
+
+        ymin = tf.maximum(bboxes[:, 0], 0.0)
+
+        xmin = tf.maximum(bboxes[:, 1], 0.0)
+        ymax = tf.minimum(bboxes[:, 2], 1.0)
+        xmax = tf.minimum(bboxes[:, 3], 1.0)
+        bboxes = tf.stack([ymin, xmin, ymax, xmax], axis=-1)
 
         return cropped_image, labels, bboxes, distort_bbox
 
@@ -279,9 +280,9 @@ def preprocess_for_train(image, labels, bboxes,
         dst_image = image
         dst_image, labels, bboxes, distort_bbox = \
             distorted_bounding_box_crop(dst_image, labels, bboxes)
-             
-        tf_summary_image(image, tf.reshape(distort_bbox, (1,-1)), 'cropped_position')
-        
+
+        tf_summary_image(image, tf.reshape(distort_bbox, (1, -1)), 'cropped_position')
+
         # Resize image to output size.
         dst_image = tf_image.resize_image(dst_image, out_shape,
                                           method=tf.image.ResizeMethod.BILINEAR,
@@ -292,9 +293,9 @@ def preprocess_for_train(image, labels, bboxes,
 
         # Randomly distort the colors. There are 4 ways to do it.
         dst_image = apply_with_random_selector(
-                dst_image,
-                lambda x, ordering: distort_color(x, ordering, fast_mode),
-                num_cases=4)
+            dst_image,
+            lambda x, ordering: distort_color(x, ordering, fast_mode),
+            num_cases=4)
         tf_summary_image(dst_image, bboxes, 'color_distorted_image')
 
         # Rescale to VGG input scale.

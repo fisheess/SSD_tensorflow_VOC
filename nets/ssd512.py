@@ -29,21 +29,22 @@ class SSDModel():
         #         self.anchor_size_bounds=[0.15, 0.90],
         # Configuration used to assign ground truth information to the model outputs that corresponds to all default boxes
         # the first element is the scale for this feature layer
-        self.img_shape = (300, 300)
+        self.img_shape = (512, 512)
         self.num_classes = 21
         self.no_annotation_label = 21
         self.feat_layers = ['block4', 'block7',
-                            'block8', 'block9', 'block10', 'block11']
-        self.feat_shapes = [(38, 38), (19, 19), (10, 10),
-                            (5, 5), (3, 3), (1, 1)]
-        self.anchor_sizes = [(21., 45.),  # the first element is the scale for current layer, in this case, it's 21
-                             (45., 99.),
-                             (99., 153.),
-                             (153., 207.),
-                             (207., 261.),
-                             (261., 315.)]
+                            'block8', 'block9', 'block10', 'block11', 'block12']
+        self.feat_shapes = [(64, 64), (32, 32), (16, 16), (8, 8), (4, 4), (2, 2), (1, 1)]
+        self.anchor_sizes = [(20.48, 51.2),
+                             (51.2, 133.12),
+                             (133.12, 215.04),
+                             (215.04, 296.96),
+                             (296.96, 378.88),
+                             (378.88, 460.8),
+                             (460.8, 542.72)]
 
         self.anchor_ratios = [[2, .5],
+                              [2, .5, 3, 1. / 3],
                               [2, .5, 3, 1. / 3],
                               [2, .5, 3, 1. / 3],
                               [2, .5, 3, 1. / 3],
@@ -52,7 +53,7 @@ class SSDModel():
         # the ration between input image size and feature layer size
         # it's used to map x and y of default box from feature layer to input layer
         # to determine the position of default boxes
-        self.anchor_steps = [8, 16, 32, 64, 100, 300]
+        self.anchor_steps = [8, 16, 32, 64, 128, 256, 512]
         self.anchor_offset = 0.5
         # Scaling of encoded coordinates.
         # For the scaling, the idea is try to scale such that all error terms (classification + position + size)
@@ -60,7 +61,7 @@ class SSDModel():
         self.prior_scaling = [0.1, 0.1, 0.2, 0.2]
 
         # normalization for conv4 3
-        self.normalizations = [20, -1, -1, -1, -1, -1]
+        self.normalizations = [20, -1, -1, -1, -1, -1, -1]
 
         # thresholding for ignoring "no annotation label"
         self.ignore_threshold = 0.5
@@ -104,43 +105,41 @@ class SSDModel():
         with tf.variable_scope(end_point):
             net = slim.conv2d(net, 256, [1, 1], scope='conv1x1')
             net = slim.batch_norm(net)
-            net = self.__dropout(net)
             net = custom_layers.pad2d(net, pad=(1, 1))
-            net = slim.conv2d(
-                net, 512, [3, 3], stride=2, scope='conv3x3', padding='VALID')
+            net = slim.conv2d(net, 512, [3, 3], stride=2, scope='conv3x3', padding='VALID')
             net = slim.batch_norm(net)
-            net = self.__dropout(net)
         end_points[end_point] = net
         end_point = 'block9'
         with tf.variable_scope(end_point):
             net = slim.conv2d(net, 128, [1, 1], scope='conv1x1')
             net = slim.batch_norm(net)
-            net = self.__dropout(net)
             net = custom_layers.pad2d(net, pad=(1, 1))
-            net = slim.conv2d(
-                net, 256, [3, 3], stride=2, scope='conv3x3', padding='VALID')
+            net = slim.conv2d(net, 256, [3, 3], stride=2, scope='conv3x3', padding='VALID')
             net = slim.batch_norm(net)
-            net = self.__dropout(net)
         end_points[end_point] = net
         end_point = 'block10'
         with tf.variable_scope(end_point):
             net = slim.conv2d(net, 128, [1, 1], scope='conv1x1')
             net = slim.batch_norm(net)
-            net = self.__dropout(net)
-            net = slim.conv2d(net, 256, [3, 3],
-                              scope='conv3x3', padding='VALID')
+            net = custom_layers.pad2d(net, pad=(1, 1))
+            net = slim.conv2d(net, 256, [3, 3], stride=2, scope='conv3x3', padding='VALID')
             net = slim.batch_norm(net)
-            net = self.__dropout(net)
         end_points[end_point] = net
         end_point = 'block11'
         with tf.variable_scope(end_point):
             net = slim.conv2d(net, 128, [1, 1], scope='conv1x1')
             net = slim.batch_norm(net)
-            net = self.__dropout(net)
-            net = slim.conv2d(net, 256, [3, 3],
-                              scope='conv3x3', padding='VALID')
+            net = custom_layers.pad2d(net, pad=(1, 1))
+            net = slim.conv2d(net, 256, [3, 3], stride=2, scope='conv3x3', padding='VALID')
             net = slim.batch_norm(net)
-            net = self.__dropout(net)
+        end_points[end_point] = net
+        end_point = 'block12'
+        with tf.variable_scope(end_point):
+            net = slim.conv2d(net, 128, [1, 1], scope='conv1x1')
+            net = slim.batch_norm(net)
+            net = custom_layers.pad2d(net, pad=(1, 1))
+            net = slim.conv2d(net, 256, [4, 4], scope='conv4x4', padding='VALID')
+            net = slim.batch_norm(net)
         end_points[end_point] = net
 
         # Prediction and localisations layers.
